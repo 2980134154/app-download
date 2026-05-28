@@ -33,3 +33,6 @@ Temporary Items
 *.png
 *.jpg
 *.jpeg
+
+# README (仅本地保留)
+README.md
