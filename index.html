@@ -127,6 +127,49 @@
             color: #999;
         }
 
+        .wechat-tip {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 60px 20px 20px;
+            text-align: right;
+            display: none;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .wechat-tip.show {
+            display: block;
+        }
+
+        .wechat-tip-arrow {
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 20px solid rgba(0, 0, 0, 0.95);
+            position: absolute;
+            top: -20px;
+            right: 20px;
+        }
+
+        .wechat-tip-text {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
         .spinner {
             display: inline-block;
             width: 16px;
@@ -147,6 +190,14 @@
     </style>
 </head>
 <body>
+    <!-- 微信环境提示 -->
+    <div class="wechat-tip" id="wechatTip">
+        <div class="wechat-tip-text">
+            👆 点击右上角 "···"<br>
+            选择 "在浏览器中打开"
+        </div>
+    </div>
+
     <div class="container">
         <div class="logo">📱</div>
         <h1>首创京都期货</h1>
@@ -190,26 +241,29 @@
         function detectDevice() {
             const userAgent = navigator.userAgent || navigator.vendor || window.opera;
             
+            // 检测是否在微信内
+            const isWeChat = /MicroMessenger/i.test(userAgent);
+            
             // iOS 检测
             if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-                return 'ios';
+                return { platform: 'ios', isWeChat: isWeChat };
             }
             
             // Android 检测
             if (/android/i.test(userAgent)) {
-                return 'android';
+                return { platform: 'android', isWeChat: isWeChat };
             }
             
             // 微信内置浏览器检测
-            if (/MicroMessenger/i.test(userAgent)) {
+            if (isWeChat) {
                 if (/android/i.test(userAgent)) {
-                    return 'android';
+                    return { platform: 'android', isWeChat: true };
                 } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
-                    return 'ios';
+                    return { platform: 'ios', isWeChat: true };
                 }
             }
             
-            return 'unknown';
+            return { platform: 'unknown', isWeChat: isWeChat };
         }
 
         // 更新状态显示
@@ -227,14 +281,27 @@
         }
 
         // 自动跳转
-        function autoRedirect(device) {
+        function autoRedirect(deviceInfo) {
+            const { platform, isWeChat } = deviceInfo;
+            
+            // 如果在微信内，不自动跳转，只显示提示
+            if (isWeChat) {
+                if (platform === 'ios') {
+                    updateStatus('⚠️ 检测到微信环境，请点击右上角 "..." 选择 "在Safari中打开" 或直接点击下方按钮', false);
+                } else if (platform === 'android') {
+                    updateStatus('⚠️ 检测到微信环境，请点击右上角 "..." 选择 "在浏览器中打开" 或直接点击下方按钮', false);
+                }
+                return; // 不执行自动跳转
+            }
+            
+            // 非微信环境，正常倒计时跳转
             let countdown = Math.floor(CONFIG.autoRedirectDelay / 1000);
             
             const countdownInterval = setInterval(() => {
                 if (countdown > 0) {
-                    if (device === 'ios') {
+                    if (platform === 'ios') {
                         updateStatus(`检测到 iOS 设备，${countdown} 秒后跳转到 App Store...`, true);
-                    } else if (device === 'android') {
+                    } else if (platform === 'android') {
                         updateStatus(`检测到 Android 设备，${countdown} 秒后跳转到下载页面...`, true);
                     }
                     countdown--;
@@ -244,7 +311,7 @@
             }, 1000);
 
             setTimeout(() => {
-                if (device === 'ios') {
+                if (platform === 'ios') {
                     updateStatus('正在跳转到 App Store...', true);
                     // 尝试跳转，如果失败则使用备用链接
                     try {
@@ -253,7 +320,7 @@
                         console.log('主链接跳转失败，尝试备用链接');
                         window.location.href = CONFIG.iosUrlFallback;
                     }
-                } else if (device === 'android') {
+                } else if (platform === 'android') {
                     updateStatus('正在跳转到下载页面...', true);
                     window.location.href = CONFIG.androidUrl;
                 }
@@ -262,14 +329,34 @@
 
         // 页面加载完成后执行
         window.addEventListener('DOMContentLoaded', function() {
-            const device = detectDevice();
+            const deviceInfo = detectDevice();
+            const { platform, isWeChat } = deviceInfo;
             
-            if (device === 'ios') {
-                updateStatus('检测到 iOS 设备', false);
-                autoRedirect('ios');
-            } else if (device === 'android') {
-                updateStatus('检测到 Android 设备', false);
-                autoRedirect('android');
+            // 如果在微信内，显示顶部提示
+            if (isWeChat) {
+                const wechatTip = document.getElementById('wechatTip');
+                wechatTip.classList.add('show');
+                
+                // 5秒后自动隐藏提示
+                setTimeout(() => {
+                    wechatTip.classList.remove('show');
+                }, 5000);
+            }
+            
+            if (platform === 'ios') {
+                if (isWeChat) {
+                    updateStatus('⚠️ 检测到微信环境，请点击右上角 "..." 选择 "在Safari中打开"', false);
+                } else {
+                    updateStatus('检测到 iOS 设备', false);
+                    autoRedirect(deviceInfo);
+                }
+            } else if (platform === 'android') {
+                if (isWeChat) {
+                    updateStatus('⚠️ 检测到微信环境，请点击右上角 "..." 选择 "在浏览器中打开"', false);
+                } else {
+                    updateStatus('检测到 Android 设备', false);
+                    autoRedirect(deviceInfo);
+                }
             } else {
                 updateStatus('未能识别设备类型，请手动选择下载方式', false);
             }
