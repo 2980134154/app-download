@@ -34,5 +34,8 @@ Temporary Items
 *.jpg
 *.jpeg
 
+# 但是 logo 需要提交
+!logo.jpeg
+
 # README (仅本地保留)
 README.md
