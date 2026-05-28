@@ -158,7 +158,7 @@
         </div>
 
         <div class="buttons">
-            <a href="https://apps.apple.com/cn/app/%E9%A6%96%E5%88%9B%E4%BA%AC%E9%83%BD%E6%9C%9F%E8%B4%A7/id1439870586" 
+            <a href="https://apps.apple.com/app/id1439870586" 
                class="btn btn-ios" 
                id="iosBtn">
                 🍎 前往 App Store
@@ -178,7 +178,10 @@
     <script>
         // 配置
         const CONFIG = {
-            iosUrl: 'https://apps.apple.com/cn/app/%E9%A6%96%E5%88%9B%E4%BA%AC%E9%83%BD%E6%9C%9F%E8%B4%A7/id1439870586',
+            // 使用简化的 App Store 链接（更可靠）
+            iosUrl: 'https://apps.apple.com/app/id1439870586',
+            // 备用链接（带中文）
+            iosUrlFallback: 'https://apps.apple.com/cn/app/%E9%A6%96%E5%88%9B%E4%BA%AC%E9%83%BD%E6%9C%9F%E8%B4%A7/id1439870586',
             androidUrl: 'https://www.jingduqh.com/companyfile/10/',
             autoRedirectDelay: 2000 // 2秒后自动跳转
         };
@@ -243,7 +246,13 @@
             setTimeout(() => {
                 if (device === 'ios') {
                     updateStatus('正在跳转到 App Store...', true);
-                    window.location.href = CONFIG.iosUrl;
+                    // 尝试跳转，如果失败则使用备用链接
+                    try {
+                        window.location.href = CONFIG.iosUrl;
+                    } catch (e) {
+                        console.log('主链接跳转失败，尝试备用链接');
+                        window.location.href = CONFIG.iosUrlFallback;
+                    }
                 } else if (device === 'android') {
                     updateStatus('正在跳转到下载页面...', true);
                     window.location.href = CONFIG.androidUrl;
